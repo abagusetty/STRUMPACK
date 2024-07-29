@@ -541,8 +541,7 @@ namespace strumpack {
     laswp_kernel(int n, scalar_t* dA, int lddA,
                  int npivots, int* dipiv, int inci,
                  const sycl::nd_item<3> &item_ct1) {
-      int tid = item_ct1.get_local_id(2) +
-                item_ct1.get_local_range(2) * item_ct1.get_group(2);
+      int tid = item_ct1.get_global_id(2);
       if (tid < n) {
         dA += tid * lddA;
         auto A1 = dA;
@@ -588,10 +587,8 @@ namespace strumpack {
                         int* npivots, unsigned int batchCount,
                         const sycl::nd_item<3> &item_ct1) {
       // assume dn = cols, inc = 1
-      int x = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-        item_ct1.get_local_id(2),
-        f = item_ct1.get_group(1) * item_ct1.get_local_range(1) +
-        item_ct1.get_local_id(1);
+      int x = item_ct1.get_global_id(2),
+        f = item_ct1.get_global_id(1);
       if (f >= batchCount) return;
       if (x >= dn[f]) return;
       auto A = dA[f];
@@ -627,7 +624,7 @@ namespace strumpack {
         nbf = (batchCount + ops - 1) / ops;
       sycl::range<3> block(1, ops, nt);
       for (unsigned int f=0; f<nbf; f+=MAX_BLOCKS_Y) {
-        sycl::range<3> grid(nbx, std::min(nbf - f, MAX_BLOCKS_Y), 1);
+        sycl::range<3> grid(1, std::min(nbf - f, MAX_BLOCKS_Y), nbx);
         auto f0 = f * ops;
         /*
           DPCT1049:1: The work-group size passed to the SYCL kernel may exceed the

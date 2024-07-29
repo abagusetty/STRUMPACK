@@ -157,7 +157,7 @@ endif()
 if(STRUMPACK_USE_SYCL)
   message(STATUS "SYCL/DPC++ enabled, looking for MKL")
   list(APPEND CMAKE_PREFIX_PATH $ENV{MKLROOT} $ENV{TBBROOT})
-  find_package(MKL REQUIRED)
+  #find_package(MKL REQUIRED)
 endif()
 
 

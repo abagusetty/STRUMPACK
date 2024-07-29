@@ -328,8 +328,7 @@ namespace strumpack {
     template<typename T, typename real_t> void
     replace_pivots_kernel(int n, T* A, real_t thresh,
                           const sycl::nd_item<3> &item_ct1) {
-      int i = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-        item_ct1.get_local_id(2);
+      int i = item_ct1.get_global_id(2);
       if (i < n) {
         std::size_t k = i + i*n;
         if (absolute_value(A[k]) < thresh)
@@ -372,10 +371,8 @@ namespace strumpack {
     replace_pivots_vbatch_kernel(int* dn, T** dA, int* lddA, real_t thresh,
                                  unsigned int batchCount,
                                  const sycl::nd_item<3> &item_ct1) {
-      int i = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-        item_ct1.get_local_id(2),
-        f = item_ct1.get_group(1) * item_ct1.get_local_range(1) +
-        item_ct1.get_local_id(1);
+      int i = item_ct1.get_global_id(2),
+        f = item_ct1.get_global_id(1);
       if (f >= batchCount) return;
       if (i >= dn[f]) return;
       auto A = dA[f];
@@ -401,7 +398,7 @@ namespace strumpack {
       sycl::range<3> block(1, ops, nt);
       for (unsigned int f=0; f<nbf; f+=MAX_BLOCKS_Y) {
         std::cout << "TODO fix" << std::endl;
-        sycl::range<3> grid(nbx, std::min(nbf - f, MAX_BLOCKS_Y), 1);
+        sycl::range<3> grid(1, std::min(nbf - f, MAX_BLOCKS_Y), nbx);
         auto f0 = f * ops;
         /*
           DPCT1049:11: The work-group size passed to the SYCL kernel may exceed
@@ -592,6 +589,7 @@ namespace strumpack {
         limit. To get the device limit, query info::device::max_work_group_size.
         Adjust the work-group size if needed.
       */
+      std::cout << "value of count, block, NT: " << count << ", " << NT << std::endl;
       q_ct1.submit([&](sycl::handler &cgh) {
           sycl::local_accessor<int, 0> p_acc_ct1(cgh);
           sycl::local_accessor<T, 1> M__acc_ct1(sycl::range<1>(NT * NT), cgh);
@@ -674,10 +672,8 @@ namespace strumpack {
     extend_add_rhs_kernel_left
     (int N, int nrhs, unsigned int nf, AssembleData<T>* dat,
      const sycl::nd_item<3> &item_ct1) {
-      int r = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-        item_ct1.get_local_id(2),
-        i = item_ct1.get_group(1) * item_ct1.get_local_range(1) +
-        item_ct1.get_local_id(1);
+      int r = item_ct1.get_global_id(2),
+        i = item_ct1.get_global_id(1);
       if (i >= nf) return;
       auto& f = dat[i];
       if (f.CB1)
@@ -688,10 +684,8 @@ namespace strumpack {
     extend_add_rhs_kernel_right
     (int N, int nrhs, unsigned int nf, AssembleData<T>* dat,
      const sycl::nd_item<3> &item_ct1) {
-      int r = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-        item_ct1.get_local_id(2),
-        i = item_ct1.get_group(1) * item_ct1.get_local_range(1) +
-        item_ct1.get_local_id(1);
+      int r = item_ct1.get_global_id(2),
+        i = item_ct1.get_global_id(1);
       if (i >= nf) return;
       auto& f = dat[i];
       if (f.CB2)
@@ -717,7 +711,7 @@ namespace strumpack {
       sycl::range<3> block(1, ops, nt);
       for (unsigned int f=0; f<nbf; f+=MAX_BLOCKS_Z) {
         std::cout << "TODO fix" << std::endl;
-        sycl::range<3> grid(nb, std::min(nbf - f, MAX_BLOCKS_Z), 1);
+        sycl::range<3> grid(1, std::min(nbf - f, MAX_BLOCKS_Z), nb);
         /*
           DPCT1049:24: The work-group size passed to the SYCL kernel may exceed
           the limit. To get the device limit, query
@@ -761,10 +755,8 @@ namespace strumpack {
     template<typename T> void
     extract_rhs_kernel(int N, int nrhs, unsigned int nf,
                        AssembleData<T>* dat, const sycl::nd_item<3> &item_ct1) {
-      int r = item_ct1.get_group(2) * item_ct1.get_local_range(2) +
-        item_ct1.get_local_id(2),
-        i = item_ct1.get_group(1) * item_ct1.get_local_range(1) +
-        item_ct1.get_local_id(1);
+      int r = item_ct1.get_global_id(2),
+        i = item_ct1.get_global_id(1);
       if (i >= nf) return;
       auto& f = dat[i];
       if (f.CB1)
@@ -792,7 +784,7 @@ namespace strumpack {
       sycl::range<3> block(1, ops, nt);
       for (unsigned int f=0; f<nbf; f+=MAX_BLOCKS_Z) {
         std::cout << "TODO fix" << std::endl;
-        sycl::range<3> grid(nb, std::min(nbf - f, MAX_BLOCKS_Z), 1);
+        sycl::range<3> grid(1, std::min(nbf - f, MAX_BLOCKS_Z), nb);
         /*
           DPCT1049:26: The work-group size passed to the SYCL kernel may exceed
           the limit. To get the device limit, query
