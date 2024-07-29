@@ -514,7 +514,7 @@ namespace strumpack {
          const DenseMatrix<scalar_t>& x, scalar_t beta, DenseMatrix<scalar_t>& y) {
       STRUMPACK_FLOPS((is_complex<scalar_t>()?4:1)*blas::gemv_flops(a.rows(),a.cols(),alpha,beta));
       STRUMPACK_BYTES((is_complex<scalar_t>()?2:1)*sizeof(scalar_t)*blas::gemv_moves(a.rows(),a.cols()));
-      oneapi::mkl::blas::gemv
+      oneapi::mkl::blas::column_major::gemv
         (get_sycl_queue(handle), T2MKLOp(ta), a.rows(), a.cols(), alpha,
          a.data(), a.ld(), x.data(), 1, beta, y.data(), 1);
     }

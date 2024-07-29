@@ -26,10 +26,11 @@
  *             Division).
  *
  */
+#define SYCL_EXT_ONEAPI_COMPLEX
 #include <sycl/sycl.hpp>
+#include <sycl/ext/oneapi/experimental/complex/complex.hpp>
 #include <complex>
 #include <iostream>
-#include <complex>
 
 #define STRUMPACK_NO_TRIPLET_MPI
 #include "FrontGPUKernels.hpp"
@@ -54,8 +55,8 @@ namespace strumpack {
 
     float absolute_value(float &a) { return std::abs(a); }
     double absolute_value(double &a) { return std::abs(a); }
-    float absolute_value(std::complex<float> &a) { return std::abs(a); }
-    double absolute_value(std::complex<double> &a) { return std::abs(a); }
+    float absolute_value(std::complex<float> &a) { return sycl::ext::oneapi::experimental::abs(static_cast<sycl::ext::oneapi::experimental::complex<float>>(a)); }
+    double absolute_value(std::complex<double> &a) { return sycl::ext::oneapi::experimental::abs(static_cast<sycl::ext::oneapi::experimental::complex<double>>(a)); }
     // float absolute_value(std::complex<float> &a) { return thrust::abs(a); }
     // double absolute_value(std::complex<double> &a) { return thrust::abs(a); }
 
@@ -275,8 +276,15 @@ namespace strumpack {
           */
           item_ct1.barrier();
           // divide by the pivot element
-          if (j == k && i > k && i < n)
-            M[i+k*NT] /= M[k+k*NT];
+          if (j == k && i > k && i < n) {
+            if constexpr(std::is_same_v<T, std::complex<double>> || std::is_same_v<T, std::complex<float>>) {
+              // TODO: handle the complex division logic here
+              // Currently SYCL(on Nvidia & AMD) is causing linking errors
+              // with built-ins __divdc3& __divsc3
+            } else {
+              M[i+k*NT] /= M[k+k*NT];
+            }
+          }
           /*
             DPCT1065:7: Consider replacing sycl::nd_item::barrier() with
             sycl::nd_item::barrier(sycl::access::fence_space::local_space) for
@@ -476,8 +484,15 @@ namespace strumpack {
 
         // solve with U
         for (int k=n-1; k>=0; k--) {
-          if (i == k && c < m)
-            B[j+i*NT] /= A[i+i*NT];
+          if (i == k && c < m) {
+            if constexpr(std::is_same_v<T, std::complex<double>> || std::is_same_v<T, std::complex<float>>) {
+              // TODO: handle the complex division logic here
+              // Currently SYCL(on Nvidia & AMD) is causing linking errors
+              // with built-ins __divdc3& __divsc3
+            } else {
+              B[j+i*NT] /= A[i+i*NT];
+            }
+          }
           /*
             DPCT1065:16: Consider replacing sycl::nd_item::barrier() with
             sycl::nd_item::barrier(sycl::access::fence_space::local_space) for
